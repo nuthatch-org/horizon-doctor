@@ -1,0 +1,47 @@
+[package]
+name = "horizon-doctor"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "Preflight & migration validation CLI for the Graph Protocol indexer stack (Horizon)"
+license = "Apache-2.0"
+repository = "https://github.com/lodestar-team/horizon-doctor"
+readme = "README.md"
+keywords = ["graphprotocol", "indexer", "horizon", "preflight", "migrations"]
+categories = ["command-line-utilities", "database"]
+
+[[bin]]
+name = "horizon-doctor"
+path = "src/main.rs"
+
+[lib]
+name = "horizon_doctor"
+path = "src/lib.rs"
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Config & manifest parsing
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Postgres schema introspection (read-only). Pinned to indexer-rs's sqlx line.
+sqlx = { version = "0.8.2", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-ring",
+    "postgres",
+] }
+
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+# Human-readable output
+comfy-table = "7"
+
+# Errors
+anyhow = "1"
+thiserror = "2"
+
+[dev-dependencies]

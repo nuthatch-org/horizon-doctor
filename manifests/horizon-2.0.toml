@@ -1,0 +1,73 @@
+# horizon-doctor invariant manifest: Graph Horizon, indexer-service-rs / indexer-tap-agent v2.0.0+
+#
+# Schema invariants are derived from the canonical TypeScript graphprotocol/indexer
+# migrations, mirrored by the tap_horizon_* migrations and sqlx queries in
+# graphprotocol/indexer-rs. The presence of `collection_id` on the receipt/RAV
+# tables is the V2/Horizon discriminator whose absence produces the Postgres
+# `42703 (undefined_column)` panic in indexer-tap-agent at startup.
+#
+# DRIFT CONTROL: these (table, columns) pairs MUST be validated against the
+# canonical migrations in CI. See migrations:
+#   20250131122241_tap_horizon_receipts.up.sql
+#   20250210152412_tap_horizon_ravs.up.sql
+#   20250212211337_tap_horizon_sender_denylist.up.sql
+
+name = "horizon-2.0"
+description = "Graph Horizon stack (indexer-service-rs / indexer-tap-agent v2.0.0+): V2 TAP receipt schema."
+
+[[schema.tables]]
+name = "tap_horizon_receipts"
+key_column = "collection_id"
+columns = [
+    "id",
+    "signer_address",
+    "signature",
+    "collection_id",
+    "payer",
+    "data_service",
+    "service_provider",
+    "timestamp_ns",
+    "nonce",
+    "value",
+]
+
+[[schema.tables]]
+name = "tap_horizon_receipts_invalid"
+key_column = "collection_id"
+columns = [
+    "id",
+    "signer_address",
+    "signature",
+    "collection_id",
+    "payer",
+    "data_service",
+    "service_provider",
+    "timestamp_ns",
+    "nonce",
+    "value",
+    "error_log",
+]
+
+[[schema.tables]]
+name = "tap_horizon_ravs"
+key_column = "collection_id"
+columns = [
+    "signature",
+    "collection_id",
+    "payer",
+    "data_service",
+    "service_provider",
+    "timestamp_ns",
+    "value_aggregate",
+    "metadata",
+    "last",
+    "final",
+    "redeemed_at",
+    "created_at",
+    "updated_at",
+]
+
+[[schema.tables]]
+name = "tap_horizon_denylist"
+key_column = "sender_address"
+columns = ["sender_address"]

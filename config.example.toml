@@ -1,0 +1,16 @@
+# horizon-doctor configuration.
+#
+# Any secret-bearing value may be given as `env:VAR_NAME` and is resolved from the
+# process environment at load time, so secrets never live in this file.
+
+[doctor]
+stack_manifest = "horizon-2.0"      # selects the invariant set / version matrix
+network        = "arbitrum-one"
+strict         = false              # promote WARN to failure (exit 1)
+database_url   = "env:DATABASE_URL" # read-only Postgres introspection
+
+[doctor.endpoints]
+graph_node_status = "http://127.0.0.1:8030"
+agent_metrics     = "http://127.0.0.1:7300"
+network_subgraph  = "https://gateway.example/subgraphs/id/REPLACE_ME"
+rpc_url           = "env:DOCTOR_RPC_URL"
