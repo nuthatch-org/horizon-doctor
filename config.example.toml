@@ -11,6 +11,18 @@ database_url   = "env:DATABASE_URL" # read-only Postgres introspection
 
 [doctor.endpoints]
 graph_node_status = "http://127.0.0.1:8030"
-agent_metrics     = "http://127.0.0.1:7300"
+agent_metrics     = "http://127.0.0.1:7300/metrics"   # indexer-agent (running): live version cross-check
+service_metrics   = "http://127.0.0.1:7300/metrics"   # indexer-service-rs Prometheus endpoint
+tap_agent_metrics = "http://127.0.0.1:7301/metrics"   # indexer-tap-agent Prometheus endpoint
 network_subgraph  = "https://gateway.example/subgraphs/id/REPLACE_ME"
 rpc_url           = "env:DOCTOR_RPC_URL"
+
+# The deployed-version matrix, checked by the `version` family against the
+# manifest's Horizon floors. In the preflight/gate case the gated components
+# aren't running yet, so declare what you're about to deploy here; where a
+# metrics endpoint above is also reachable, horizon-doctor cross-checks it and
+# warns on drift. Values may be `env:VAR` references.
+[doctor.versions]
+"indexer-service-rs" = "2.0.0"
+"indexer-tap-agent"  = "2.0.0"
+"indexer-agent"      = "env:INDEXER_AGENT_VERSION"

@@ -6,6 +6,7 @@
 //! secret-bearing value may be given as `env:VAR_NAME` and is resolved from the
 //! process environment at load time — secrets never live in the file.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -31,6 +32,11 @@ pub struct DoctorConfig {
     pub database_url: Option<String>,
     #[serde(default)]
     pub endpoints: Endpoints,
+    /// The deployed-version matrix the operator declares, keyed by component name
+    /// (e.g. `"indexer-tap-agent"`). Compared against the manifest's floors by the
+    /// version check family. Each value may be an `env:VAR` reference.
+    #[serde(default)]
+    pub versions: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -43,6 +49,28 @@ pub struct Endpoints {
     pub network_subgraph: Option<String>,
     #[serde(default)]
     pub rpc_url: Option<String>,
+    /// `indexer-service-rs` Prometheus metrics endpoint (live version cross-check).
+    #[serde(default)]
+    pub service_metrics: Option<String>,
+    /// `indexer-tap-agent` Prometheus metrics endpoint (live version cross-check).
+    #[serde(default)]
+    pub tap_agent_metrics: Option<String>,
+}
+
+impl Endpoints {
+    /// Look up an endpoint by the key a manifest references (e.g. `agent_metrics`).
+    /// Returns the raw value, which may still be an `env:` reference.
+    pub fn get(&self, key: &str) -> Option<&str> {
+        match key {
+            "graph_node_status" => self.graph_node_status.as_deref(),
+            "agent_metrics" => self.agent_metrics.as_deref(),
+            "network_subgraph" => self.network_subgraph.as_deref(),
+            "rpc_url" => self.rpc_url.as_deref(),
+            "service_metrics" => self.service_metrics.as_deref(),
+            "tap_agent_metrics" => self.tap_agent_metrics.as_deref(),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -77,6 +105,17 @@ impl Config {
             Some(raw) => resolve_env(raw).map(Some),
             None => Ok(None),
         }
+    }
+
+    /// Resolve the declared version matrix, following any `env:` references. Fails
+    /// fast if a referenced variable is unset, so the operator gets one clear error
+    /// rather than a silently-missing version.
+    pub fn resolved_versions(&self) -> Result<BTreeMap<String, String>, ConfigError> {
+        self.doctor
+            .versions
+            .iter()
+            .map(|(name, raw)| Ok((name.clone(), resolve_env(raw)?)))
+            .collect()
     }
 }
 

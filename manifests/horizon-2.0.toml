@@ -71,3 +71,36 @@ columns = [
 name = "tap_horizon_denylist"
 key_column = "sender_address"
 columns = ["sender_address"]
+
+# ----------------------------------------------------------------------------
+# Version matrix.
+#
+# Horizon (V2) is a hard cut-over: the Rust components only speak the V2 TAP
+# protocol from v2.0.0 onwards. Running anything below that against a Horizon
+# schema is the upstream of the receipt/RAV failures the schema family catches.
+#
+# The operator declares deployed versions in [doctor.versions]; where a metrics
+# endpoint is also configured we cross-check the running version and flag drift.
+#
+# DRIFT CONTROL: the `hard` floors below track the Horizon release line of
+# graphprotocol/indexer-rs. `indexer-agent` (the TS migration owner) is reported
+# but not floor-gated here, pending a confirmed Horizon-minimum agent version.
+
+[[version.components]]
+name = "indexer-service-rs"
+min_version = "2.0.0"
+hard = true
+endpoint = "service_metrics"
+metric = "indexer_service_build_info"
+
+[[version.components]]
+name = "indexer-tap-agent"
+min_version = "2.0.0"
+hard = true
+endpoint = "tap_agent_metrics"
+metric = "tap_agent_build_info"
+
+[[version.components]]
+name = "indexer-agent"
+endpoint = "agent_metrics"
+metric = "indexer_agent_build_info"

@@ -37,6 +37,15 @@ sqlx = { version = "0.8.2", default-features = false, features = [
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
+# Semantic version comparison (the version check family's floor logic)
+semver = "1"
+
+# HTTP client for the optional live cross-check against a running component's
+# Prometheus metrics endpoint. rustls (no OpenSSL) to match sqlx's TLS choice.
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+] }
+
 # Human-readable output
 comfy-table = "7"
 

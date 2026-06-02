@@ -24,6 +24,41 @@ pub struct Manifest {
     pub description: String,
     #[serde(default)]
     pub schema: SchemaManifest,
+    #[serde(default)]
+    pub version: VersionManifest,
+}
+
+/// Version-matrix invariants: the minimum component versions a stack release
+/// requires (notably the `v2.0.0` Horizon hard floor for the Rust components).
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct VersionManifest {
+    #[serde(default, rename = "components")]
+    pub components: Vec<ComponentInvariant>,
+}
+
+/// A single component's version requirement.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ComponentInvariant {
+    /// Component name, e.g. `indexer-tap-agent`. Also the key the operator uses in
+    /// `[doctor.versions]` to declare the deployed version.
+    pub name: String,
+    /// The minimum acceptable semver. `None` means "report only, no floor".
+    #[serde(default)]
+    pub min_version: Option<String>,
+    /// When `true`, a deployed version below `min_version` is a hard `FAIL` (the
+    /// Horizon v2 requirement); otherwise it is a `WARN`.
+    #[serde(default)]
+    pub hard: bool,
+    /// Optional endpoint key (into `[doctor.endpoints]`) whose Prometheus metrics
+    /// expose this component's running version, for a live cross-check.
+    #[serde(default)]
+    pub endpoint: Option<String>,
+    /// The Prometheus metric carrying the `version` label, e.g. `tap_agent_build_info`.
+    #[serde(default)]
+    pub metric: Option<String>,
+    /// Optional remediation override; otherwise a sensible default is composed.
+    #[serde(default)]
+    pub remediation: Option<String>,
 }
 
 /// Schema-coherence invariants: the tables and columns the Rust components read.

@@ -6,6 +6,7 @@
 //! * [`check`] — the result vocabulary ([`check::Check`], [`check::CheckReport`]).
 //! * [`manifest`] — versioned invariant sets, vendored in `manifests/`.
 //! * [`schema`] — check family #1 (schema coherence), the panic-prevention core.
+//! * [`version`] — check family #2 (the component version matrix).
 //! * [`config`] — the `[doctor]` config table with `env:` resolution.
 //! * [`runner`] — orchestrates families into a report.
 //! * [`output`] — human table and `--json` rendering.
@@ -20,3 +21,4 @@ pub mod manifest;
 pub mod output;
 pub mod runner;
 pub mod schema;
+pub mod version;

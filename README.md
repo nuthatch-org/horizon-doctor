@@ -54,7 +54,7 @@ it explicitly warns you **not** to drop it.
 | # | Family | Status | What it does |
 |---|--------|--------|--------------|
 | 1 | **schema** | ✅ implemented | Introspects `information_schema` for the V2 TAP tables/columns the Rust components require; detects missing tables, the empty-legacy-table case (suggests a safe `DROP`/recreate), and populated legacy tables (warns against dropping). |
-| 2 | version | ⏳ planned | Component version matrix + the `v2.0.0` Horizon hard requirement. |
+| 2 | **version** | ✅ implemented | Component version matrix against the manifest's Horizon floors (the `v2.0.0` hard requirement for the Rust components). Compares operator-declared versions and, where a metrics endpoint is reachable, cross-checks the running version and warns on drift. |
 | 3 | horizon | ⏳ planned | `[horizon].enabled` and required contract addresses present & non-zero. |
 | 4 | provision | ⏳ planned | On-chain stake provisioned to the SubgraphService + operator registered. |
 | 5 | startup | ⏳ planned | Startup-order guard (agent migrates, then tap-agent reads). |
@@ -128,6 +128,25 @@ stack_manifest = "horizon-2.0"
 network        = "arbitrum-one"
 strict         = false
 database_url   = "env:DATABASE_URL"   # read-only introspection
+```
+
+### The version matrix
+
+Horizon is a hard cut-over: the Rust components only speak the V2 TAP protocol from
+`v2.0.0`. The `version` family enforces that floor. Because the components being
+gated usually aren't running yet, you **declare** the versions you're deploying in
+`[doctor.versions]`; horizon-doctor compares each against the manifest's floor and
+fails hard on anything below `v2.0.0`. Where a Prometheus metrics endpoint is also
+configured (typically the already-running `indexer-agent`), it cross-checks the
+running `*_build_info{version=...}` label and **warns on drift** between what you
+declared and what's actually live. A `v` prefix is tolerated; values may be
+`env:VAR` references.
+
+```toml
+[doctor.versions]
+"indexer-service-rs" = "2.0.0"
+"indexer-tap-agent"  = "2.0.0"
+"indexer-agent"      = "env:INDEXER_AGENT_VERSION"
 ```
 
 ## Manifests & drift control

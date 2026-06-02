@@ -8,6 +8,7 @@ use crate::check::{Check, CheckReport, Family};
 use crate::config::Config;
 use crate::manifest::Manifest;
 use crate::schema::{self, PgSchemaSource, SchemaSource};
+use crate::version::{self, HttpVersionSource, Observed, Probe, VersionSnapshot, VersionSource};
 
 /// Run the selected check families.
 ///
@@ -27,8 +28,11 @@ pub async fn run(
             Family::Schema => {
                 report.extend(run_schema(config, manifest, database_url_override).await);
             }
+            Family::Version => {
+                report.extend(run_version(config, manifest).await);
+            }
             // Not yet implemented in this slice.
-            Family::Version | Family::Horizon | Family::Provision | Family::Startup => {
+            Family::Horizon | Family::Provision | Family::Startup => {
                 if explicit {
                     report.push(Check::warn(
                         family,
@@ -108,6 +112,68 @@ async fn run_schema(
     }
 }
 
+/// Run the version family: assemble what we can observe (operator-declared
+/// versions, plus a live scrape where a metrics endpoint is configured) and hand
+/// it to the pure evaluator.
+async fn run_version(config: &Config, manifest: &Manifest) -> Vec<Check> {
+    if manifest.version.components.is_empty() {
+        return Vec::new();
+    }
+
+    // Declared matrix from [doctor.versions], with env: references resolved.
+    let declared = match config.resolved_versions() {
+        Ok(d) => d,
+        Err(e) => {
+            return vec![Check::fail(
+                Family::Version,
+                "version.config",
+                format!("could not resolve declared versions: {e}"),
+                "Ensure the referenced environment variable is set, or use a literal version.",
+            )];
+        }
+    };
+
+    // Build live probes for components that name a metrics endpoint we can resolve.
+    let mut probes = Vec::new();
+    for c in &manifest.version.components {
+        let (Some(ep_key), Some(metric)) = (&c.endpoint, &c.metric) else {
+            continue;
+        };
+        let Some(raw) = config.doctor.endpoints.get(ep_key) else {
+            continue; // endpoint not configured; declared value (if any) stands alone.
+        };
+        // A bad env: reference here shouldn't sink the whole family — just skip the
+        // live cross-check for this component.
+        if let Ok(url) = crate::config::resolve_env(raw) {
+            probes.push(Probe {
+                component: c.name.clone(),
+                url,
+                metric: metric.clone(),
+            });
+        }
+    }
+
+    let mut scraped = if probes.is_empty() {
+        Default::default()
+    } else {
+        HttpVersionSource::new().scrape(&probes).await
+    };
+
+    // Assemble the snapshot, one Observed per manifest component.
+    let mut snapshot = VersionSnapshot::default();
+    for c in &manifest.version.components {
+        snapshot.components.insert(
+            c.name.clone(),
+            Observed {
+                declared: declared.get(&c.name).cloned(),
+                scraped: scraped.remove(&c.name),
+            },
+        );
+    }
+
+    version::evaluate_version(manifest, &snapshot)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,13 +205,13 @@ mod tests {
         let manifest = Manifest::load("horizon-2.0").unwrap();
 
         // Explicit request -> a pending WARN.
-        let report = run(&config, &manifest, &[Family::Version], true, None).await;
+        let report = run(&config, &manifest, &[Family::Horizon], true, None).await;
         assert_eq!(report.checks.len(), 1);
         assert_eq!(report.checks[0].status, Status::Warn);
-        assert_eq!(report.checks[0].name, "version.pending");
+        assert_eq!(report.checks[0].name, "horizon.pending");
 
         // Default (non-explicit) -> silently skipped.
-        let report = run(&config, &manifest, &[Family::Version], false, None).await;
+        let report = run(&config, &manifest, &[Family::Horizon], false, None).await;
         assert!(report.is_empty());
     }
 }
