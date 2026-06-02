@@ -154,14 +154,16 @@ declared and what's actually live. A `v` prefix is tolerated; values may be
 Invariants are **vendored** per stack release in [`manifests/`](./manifests) and
 embedded in the binary. The schema invariants are derived from the canonical
 `tap_horizon_*` migrations in `graphprotocol/indexer-rs` (the source of truth being
-the TypeScript `graphprotocol/indexer` repo). CI is intended to diff the manifest
-against those migrations to catch drift.
+the TypeScript `graphprotocol/indexer` repo); the version floors track the Horizon
+release line of the same components. CI is intended to diff the manifest against
+those migrations and releases to catch drift.
 
 ## Safety
 
-Strictly **read-only**: it only ever issues `SELECT`s, never writes to the database
-or submits transactions, and never logs secrets. Remediation is always the
-operator's action.
+Strictly **read-only**: against Postgres it only ever issues `SELECT`s; against a
+component's metrics endpoint it only ever issues a single `GET`. It never writes to
+the database, never submits transactions, and never logs secrets. Remediation is
+always the operator's action.
 
 ## Development
 
@@ -173,6 +175,10 @@ docker run --rm -d --name hd-pg -e POSTGRES_PASSWORD=pw -p 5433:5432 postgres:16
 HORIZON_DOCTOR_TEST_DATABASE_URL=postgres://postgres:pw@localhost:5433/postgres \
   cargo test --test schema_pg
 docker rm -f hd-pg
+
+# Opt-in: exercise the live version cross-check against a real metrics endpoint
+HORIZON_DOCTOR_TEST_METRICS_URL=http://127.0.0.1:7300/metrics \
+  cargo test --test version_http
 ```
 
 ## License
