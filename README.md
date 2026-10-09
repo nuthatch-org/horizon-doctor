@@ -101,7 +101,7 @@ migrated, converting the silent panic into a controlled, explained wait:
 ```yaml
 initContainers:
   - name: horizon-doctor
-    image: ghcr.io/nightswatchhq/horizon-doctor:latest
+    image: ghcr.io/nuthatch-org/horizon-doctor:latest
     args: ["check", "--config", "/etc/horizon-doctor/config.toml", "--only", "schema"]
     env:
       - name: DATABASE_URL
